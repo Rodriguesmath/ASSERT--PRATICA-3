@@ -5,9 +5,12 @@
  *      Author: Rodrigues
  */
 
-
 #include "LevelSensor.h"
 
-void LevelSensor_NewSample(int raw);
-void LevelSensor_IsReady(void);
-uint16_t LevelSensor_GetAverage(void);
+typedef struct
+{
+    uint32_t accumulator;
+    uint8_t sampleCount;
+} LevelSensor_t;
+
+static LevelSensor_t levelSensor = {0U, 0U};
