@@ -14,3 +14,17 @@ typedef struct
 } LevelSensor_t;
 
 static LevelSensor_t levelSensor = {0U, 0U};
+
+void LevelSensor_NewSample(uint16_t rawValue)
+{
+    if (levelSensor.sampleCount < dLEVEL_SENSOR_NUMBER)
+    {
+        levelSensor.accumulator += rawValue;
+        levelSensor.sampleCount++;
+    }
+}
+
+int LevelSensor_IsReady(void)
+{
+    return levelSensor.sampleCount >= dLEVEL_SENSOR_NUMBER;
+}
