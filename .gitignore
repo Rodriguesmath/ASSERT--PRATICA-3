@@ -3,4 +3,5 @@
 /.project
 /.settings
 /STM32F767ZITX_FLASH.ld
-/STM32F767ZITX_RAM.ld
+/STM32F767ZITX_RAM.ldDebug/
+Debug/
