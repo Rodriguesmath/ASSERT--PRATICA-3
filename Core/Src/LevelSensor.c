@@ -123,3 +123,28 @@ uint8_t LevelSensor_RawToPercent(uint16_t rawValue)
 {
     return rawValue * 100U / dLEVEL_SENSOR_ADC_MAX;
 }
+
+void LevelSensor_Handler(void)
+{
+	while(1){
+		if (Bsp_TimerHasElapsed())
+		{
+			Bsp_ClearTimerFlag();
+
+			uint16_t rawValue = Bsp_ReadAdcPolling();
+
+			LevelSensor_NewSample(rawValue);
+
+			if (LevelSensor_IsReady())
+			{
+				uint16_t average = LevelSensor_GetAverage();
+				uint16_t millivolts = LevelSensor_RawToMilliVolts(average);
+				uint8_t percent = LevelSensor_RawToPercent(average);
+
+				Bsp_PrintLevelData(average, millivolts, percent);
+
+				LevelSensor_Reset();
+			}
+		}
+	}
+}

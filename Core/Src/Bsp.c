@@ -34,6 +34,7 @@ extern TIM_HandleTypeDef htim6;
 void Bsp_Init(void)
 {
     bsp.timer6Elapsed = 0;
+    Bsp_StartTimerInterrupt();
 }
 
 /**

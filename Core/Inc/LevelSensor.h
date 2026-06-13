@@ -11,6 +11,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
+#include "Bsp.h"
 
 /* Defines -------------------------------------------------------------------*/
 #define dLEVEL_SENSOR_NUMBER       20U
@@ -55,5 +56,7 @@ uint16_t LevelSensor_RawToMilliVolts(uint16_t rawValue);
  * @return Percentual correspondente entre 0 e 100.
  */
 uint8_t LevelSensor_RawToPercent(uint16_t rawValue);
+
+void LevelSensor_Handler(void);
 
 #endif /* INC_LEVELSENSOR_H_ */
