@@ -173,7 +173,12 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+//Redefinição da função de envio de dados pela USART1
+int __io_putchar(int ch)
+{
+    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */
