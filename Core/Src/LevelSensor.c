@@ -6,7 +6,7 @@
  */
 
 
-#include "LevelSensor.c"
+#include "LevelSensor.h"
 
 void LevelSensor_NewSample(int raw);
 void LevelSensor_IsReady(void);
