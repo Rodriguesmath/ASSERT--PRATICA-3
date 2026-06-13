@@ -27,7 +27,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Bsp.h"
+#include "LevelSensor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -106,11 +107,30 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  Bsp_Init();
+  Bsp_StartTimerInterrupt();
+
   while (1)
   {
-    /* USER CODE END WHILE */
+      if (Bsp_TimerHasElapsed())
+      {
+          Bsp_ClearTimerFlag();
 
-    /* USER CODE BEGIN 3 */
+          uint16_t rawValue = Bsp_ReadAdcPolling();
+
+          LevelSensor_NewSample(rawValue);
+
+          if (LevelSensor_IsReady())
+          {
+              uint16_t average = LevelSensor_GetAverage();
+              uint16_t millivolts = LevelSensor_RawToMilliVolts(average);
+              uint8_t percent = LevelSensor_RawToPercent(average);
+
+              Bsp_PrintLevelData(average, millivolts, percent);
+
+              LevelSensor_Reset();
+          }
+      }
   }
   /* USER CODE END 3 */
 }
