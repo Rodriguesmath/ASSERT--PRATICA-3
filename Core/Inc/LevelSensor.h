@@ -9,5 +9,9 @@
 #define INC_LEVELSENSOR_H_
 
 
+#include "Bsp.h"
 
+void LevelSensor_NewSample(int raw);
+
+void LevelSensor_IsReady();
 #endif /* INC_LEVELSENSOR_H_ */

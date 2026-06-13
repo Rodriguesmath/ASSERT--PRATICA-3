@@ -8,6 +8,12 @@
 #ifndef INC_BSP_H_
 #define INC_BSP_H_
 
+void Bsp_Init();
 
+void Bsp_StartTimerInterrupt();
+
+void Bsp_ClearTimerFlag();
+
+int Bsp_ReadAdcPolling();
 
 #endif /* INC_BSP_H_ */
