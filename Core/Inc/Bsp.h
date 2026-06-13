@@ -22,7 +22,7 @@ void Bsp_ClearTimerFlag(void);
 
 int Bsp_ReadAdcPolling(void);
 
-void Bsp_UartPrintAverage(uint16_t average);
+void Bsp_PrintLevelData(uint16_t average, uint16_t millivolts, uint8_t percent);
 
 
 #endif /* INC_BSP_H_ */

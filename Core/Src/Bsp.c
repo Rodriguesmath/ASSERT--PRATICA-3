@@ -48,9 +48,12 @@ int Bsp_ReadAdcPolling(void)
     return (int)adc_value;
 }
 
-void Bsp_UartPrintAverage(uint16_t average)
+void Bsp_PrintLevelData(uint16_t average, uint16_t millivolts, uint8_t percent)
 {
-	 printf("Media ADC: %u\r\n", average);
+    printf("Media ADC: %u | Tensao: %u mV | Nivel: %u%%\r\n",
+           average,
+           millivolts,
+           percent);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
