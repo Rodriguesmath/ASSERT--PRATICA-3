@@ -8,12 +8,21 @@
 #ifndef INC_BSP_H_
 #define INC_BSP_H_
 
-void Bsp_Init();
+#include "main.h"
+#include <stdio.h>
+#include <string.h>
 
-void Bsp_StartTimerInterrupt();
+void Bsp_Init(void);
 
-void Bsp_ClearTimerFlag();
+int Bsp_TimerHasElapsed(void);
 
-int Bsp_ReadAdcPolling();
+void Bsp_StartTimerInterrupt(void);
+
+void Bsp_ClearTimerFlag(void);
+
+int Bsp_ReadAdcPolling(void);
+
+void Bsp_UartPrintAverage(uint16_t average);
+
 
 #endif /* INC_BSP_H_ */
