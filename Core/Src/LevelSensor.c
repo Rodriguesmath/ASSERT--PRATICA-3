@@ -44,3 +44,13 @@ void LevelSensor_Reset(void)
     levelSensor.accumulator = 0U;
     levelSensor.sampleCount = 0U;
 }
+
+uint16_t LevelSensor_RawToMilliVolts(uint16_t rawValue)
+{
+    return rawValue * dLEVEL_SENSOR_ADC_REF_MV / dLEVEL_SENSOR_ADC_MAX;
+}
+
+uint8_t LevelSensor_RawToPercent(uint16_t rawValue)
+{
+    return rawValue * 100U / dLEVEL_SENSOR_ADC_MAX;
+}
