@@ -28,3 +28,19 @@ int LevelSensor_IsReady(void)
 {
     return levelSensor.sampleCount >= dLEVEL_SENSOR_NUMBER;
 }
+
+uint16_t LevelSensor_GetAverage(void)
+{
+    if (levelSensor.sampleCount == 0U)
+    {
+        return 0U;
+    }
+
+    return levelSensor.accumulator / levelSensor.sampleCount;
+}
+
+void LevelSensor_Reset(void)
+{
+    levelSensor.accumulator = 0U;
+    levelSensor.sampleCount = 0U;
+}
