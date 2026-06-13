@@ -1,62 +1,55 @@
+/******************************************************************************/
 /**
  * @file LevelSensor.h
- * @brief Interface pública do módulo de sensor de nível.
- *
- * Este módulo acumula amostras do ADC, calcula a média dos valores
- * brutos e realiza conversões para milivolts e percentual.
- */
+ * @addtogroup LEVEL_SENSOR
+ * @{
+ ******************************************************************************/
 
 #ifndef INC_LEVELSENSOR_H_
 #define INC_LEVELSENSOR_H_
 
-/* Includes ------------------------------------------------------------------*/
-#include <stdint.h>
-#include "Bsp.h"
+/*******************************************************************************
+ * INCLUDES NECESSARIOS
+ ******************************************************************************/
+// Nao ha includes necessarios.
 
-/* Defines -------------------------------------------------------------------*/
-#define dLEVEL_SENSOR_NUMBER       20U
-#define dLEVEL_SENSOR_ADC_MAX      4095U
-#define dLEVEL_SENSOR_ADC_REF_MV   3300U
+/*******************************************************************************
+ * CONFIGURACOES
+ ******************************************************************************/
 
-/* Public prototypes ---------------------------------------------------------*/
+/// Quantidade de amostras usadas no calculo da media.
+/// Faixa aceita: 1 a 255 amostras.
+#define dLEVEL_SENSOR_NUMBER       20U      // [amostras]
 
-/**
- * @brief Acumula uma nova amostra do ADC.
- * @param rawValue Valor bruto lido do ADC.
- */
-void LevelSensor_NewSample(uint16_t rawValue);
+/// Valor bruto maximo produzido pelo ADC.
+/// Faixa aceita: maior que zero.
+#define dLEVEL_SENSOR_ADC_MAX      4095U    // [raw]
 
-/**
- * @brief Verifica se o número de amostras necessárias foi atingido.
- * @return 1 se estiver pronto, 0 caso contrário.
- */
-int LevelSensor_IsReady(void);
+/// Tensao de referencia usada na conversao do ADC.
+/// Faixa aceita: maior que zero.
+#define dLEVEL_SENSOR_ADC_REF_MV   3300U    // [mV]
 
-/**
- * @brief Retorna a média das amostras acumuladas.
- * @return Média dos valores brutos do ADC.
- */
-uint16_t LevelSensor_GetAverage(void);
+/*******************************************************************************
+ * DEFINES PUBLICOS
+ ******************************************************************************/
+// Nao ha defines publicos alem das configuracoes.
 
-/**
- * @brief Reinicia o acumulador e a contagem de amostras.
- */
-void LevelSensor_Reset(void);
+/*******************************************************************************
+ * TIPOS DE DADOS PUBLICOS
+ ******************************************************************************/
+// Nao ha tipos de dados publicos.
 
-/**
- * @brief Converte um valor bruto do ADC para milivolts.
- * @param rawValue Valor bruto do ADC.
- * @return Valor convertido em milivolts.
- */
-uint16_t LevelSensor_RawToMilliVolts(uint16_t rawValue);
+/*******************************************************************************
+ * PROTOTIPOS PUBLICOS
+ ******************************************************************************/
 
-/**
- * @brief Converte um valor bruto do ADC para percentual.
- * @param rawValue Valor bruto do ADC.
- * @return Percentual correspondente entre 0 e 100.
- */
-uint8_t LevelSensor_RawToPercent(uint16_t rawValue);
-
+/******************************************************************************/
+/** @brief Executa continuamente o processamento do sensor de nivel.
+ * @param Nenhum.
+ * @retval Nenhum.
+ ******************************************************************************/
 void LevelSensor_Handler(void);
 
 #endif /* INC_LEVELSENSOR_H_ */
+
+/** @} DOXYGEN GROUP TAG END OF FILE */

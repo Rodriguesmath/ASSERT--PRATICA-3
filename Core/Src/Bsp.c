@@ -1,80 +1,111 @@
+/******************************************************************************/
 /**
  * @file Bsp.c
- * @brief Implementação do módulo BSP.
+ * @addtogroup BSP
+ * @brief Interface de baixo nivel com timer, ADC e saida serial.
+ * @author Rodrigues
+ * @details
+ * \n <b>Ferramentas:</b>
+ * - STM32CubeIDE.
  *
- * Este módulo concentra o acesso direto ao hardware utilizado na prática:
- * TIM6, ADC1 e saída serial via printf.
- */
+ * \n <b>Dependencias:</b>
+ * - STM32 HAL.
+ *
+ * \n <b>Observacoes:</b>
+ * - Concentra o acesso direto ao TIM6, ADC1 e printf.
+ *
+ * @{
+ ******************************************************************************/
 
-/* Includes ------------------------------------------------------------------*/
+/*******************************************************************************
+ * INCLUDES
+ ******************************************************************************/
 #include "Bsp.h"
+#include "adc.h"
+#include <stdio.h>
+#include "tim.h"
 
-/* Private typedefs ----------------------------------------------------------*/
+/*******************************************************************************
+ * DEFINES LOCAIS (fixos, apenas auxiliar para calculos)
+ ******************************************************************************/
 
-/**
- * @brief Estrutura interna do módulo BSP.
- */
+/// Tempo maximo de espera pela conversao do ADC.
+#define dBSP_ADC_POLL_TIMEOUT_MS    10U    // [ms]
+
+/*******************************************************************************
+ * CONSTANTES
+ ******************************************************************************/
+// Nao ha constantes locais.
+
+/*******************************************************************************
+ * ESTRUTURAS DE DADOS LOCAIS
+ ******************************************************************************/
+
+/// Variaveis internas do BSP.
 typedef struct
 {
-    volatile int timer6Elapsed;
-} Bsp_t;
+    /// Flag de estouro do TIM6.
+    volatile bool timer6Elapsed;
+} bsp_t;
 
-/* Private variables ---------------------------------------------------------*/
+/// Instancia interna do BSP.
+static bsp_t bsp;
 
-static Bsp_t bsp = {0};
+/*******************************************************************************
+ * PROTOTIPOS LOCAIS
+ ******************************************************************************/
+static void Bsp_StartTimerInterrupt(void);
 
-extern ADC_HandleTypeDef hadc1;
-extern TIM_HandleTypeDef htim6;
+/*******************************************************************************
+ * FUNCOES PUBLICAS
+ ******************************************************************************/
 
-/* Public functions ----------------------------------------------------------*/
-
-/**
- * @brief Inicializa as variáveis internas do BSP.
- */
+/******************************************************************************/
+/** @brief Inicializa as variaveis internas do BSP.
+ * @param Nenhum.
+ * @retval Nenhum.
+ ******************************************************************************/
 void Bsp_Init(void)
 {
-    bsp.timer6Elapsed = 0;
+    bsp.timer6Elapsed = false;
     Bsp_StartTimerInterrupt();
 }
 
-/**
- * @brief Verifica se o TIM6 sinalizou estouro.
- * @return 1 se o timer sinalizou estouro, 0 caso contrário.
- */
-int Bsp_TimerHasElapsed(void)
+/******************************************************************************/
+/** @brief Verifica se o TIM6 sinalizou estouro.
+ * @param Nenhum.
+ * @retval true: o timer sinalizou estouro.
+ * @retval false: o timer nao sinalizou estouro.
+ ******************************************************************************/
+bool Bsp_TimerHasElapsed(void)
 {
     return bsp.timer6Elapsed;
 }
 
-/**
- * @brief Inicia o TIM6 em modo de interrupção.
- */
-void Bsp_StartTimerInterrupt(void)
-{
-    HAL_TIM_Base_Start_IT(&htim6);
-}
-
-/**
- * @brief Limpa a flag interna de estouro do TIM6.
- */
+/******************************************************************************/
+/** @brief Limpa a flag interna de estouro do TIM6.
+ * @param Nenhum.
+ * @retval Nenhum.
+ ******************************************************************************/
 void Bsp_ClearTimerFlag(void)
 {
-    bsp.timer6Elapsed = 0;
+    bsp.timer6Elapsed = false;
 }
 
-/**
- * @brief Realiza uma leitura do ADC por polling.
- * @return Valor bruto lido do ADC.
- */
-int Bsp_ReadAdcPolling(void)
+/******************************************************************************/
+/** @brief Realiza uma leitura do ADC por polling.
+ * @param Nenhum.
+ * @retval Valor bruto lido do ADC.
+ ******************************************************************************/
+uint16_t Bsp_ReadAdcPolling(void)
 {
-    uint32_t adcValue = 0U;
+    uint16_t adcValue = 0U;
 
     HAL_ADC_Start(&hadc1);
 
-    if (HAL_ADC_PollForConversion(&hadc1, 10U) == HAL_OK)
+    if (HAL_ADC_PollForConversion(&hadc1, dBSP_ADC_POLL_TIMEOUT_MS) == HAL_OK)
     {
-        adcValue = HAL_ADC_GetValue(&hadc1);
+        adcValue = (uint16_t)HAL_ADC_GetValue(&hadc1);
     }
 
     HAL_ADC_Stop(&hadc1);
@@ -82,12 +113,13 @@ int Bsp_ReadAdcPolling(void)
     return adcValue;
 }
 
-/**
- * @brief Imprime os dados calculados do sensor de nível.
- * @param average Média dos valores brutos do ADC.
- * @param millivolts Tensão calculada em milivolts.
- * @param percent Percentual calculado do nível.
- */
+/******************************************************************************/
+/** @brief Imprime os dados calculados do sensor de nivel.
+ * @param average: media dos valores brutos do ADC.
+ * @param millivolts: tensao calculada em milivolts.
+ * @param percent: percentual calculado do nivel.
+ * @retval Nenhum.
+ ******************************************************************************/
 void Bsp_PrintLevelData(uint16_t average, uint16_t millivolts, uint8_t percent)
 {
     printf("Media ADC: %u | Tensao: %u mV | Nivel: %u%%\r\n",
@@ -96,14 +128,31 @@ void Bsp_PrintLevelData(uint16_t average, uint16_t millivolts, uint8_t percent)
            percent);
 }
 
-/**
- * @brief Callback de estouro dos timers da HAL.
- * @param htim Ponteiro para o timer que gerou a interrupção.
- */
+/******************************************************************************/
+/** @brief Callback de estouro dos timers da HAL.
+ * @param htim: ponteiro para o timer que gerou a interrupcao.
+ * @retval Nenhum.
+ ******************************************************************************/
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM6)
     {
-        bsp.timer6Elapsed = 1;
+        bsp.timer6Elapsed = true;
     }
 }
+
+/*******************************************************************************
+ * FUNCOES LOCAIS
+ ******************************************************************************/
+
+/******************************************************************************/
+/** @brief Inicia o TIM6 em modo de interrupcao.
+ * @param Nenhum.
+ * @retval Nenhum.
+ ******************************************************************************/
+static void Bsp_StartTimerInterrupt(void)
+{
+    HAL_TIM_Base_Start_IT(&htim6);
+}
+
+/** @} DOXYGEN GROUP TAG END OF FILE */

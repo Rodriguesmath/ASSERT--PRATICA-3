@@ -1,50 +1,140 @@
+/******************************************************************************/
 /**
  * @file LevelSensor.c
- * @brief Implementação do módulo de sensor de nível.
+ * @addtogroup LEVEL_SENSOR
+ * @brief Processamento do sensor de nivel lido pelo ADC.
+ * @author Rodrigues
+ * @details
+ * \n <b>Ferramentas:</b>
+ * - STM32CubeIDE.
  *
- * Este módulo é responsável por acumular amostras brutas do ADC,
- * verificar quando a quantidade desejada de amostras foi atingida,
- * calcular a média aritmética e converter valores brutos para
- * milivolts e percentual.
+ * \n <b>Dependencias:</b>
+ * - Bsp.
  *
- * Created on: 13 de jun. de 2026
- * Author: Rodrigues
- */
+ * \n <b>Observacoes:</b>
+ * - Acumula amostras brutas do ADC, calcula a media e converte o resultado para
+ *   milivolts e percentual.
+ *
+ * @{
+ ******************************************************************************/
 
-/* Includes ------------------------------------------------------------------*/
+/*******************************************************************************
+ * INCLUDES
+ ******************************************************************************/
 #include "LevelSensor.h"
+#include "Bsp.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-/* Private typedefs ----------------------------------------------------------*/
+/*******************************************************************************
+ * DEFINES LOCAIS (fixos, apenas auxiliar para calculos)
+ ******************************************************************************/
 
-/**
- * @brief Estrutura interna do módulo LevelSensor.
- *
- * Agrupa todas as variáveis internas usadas para o cálculo da média.
- */
+/// Valor maximo da escala percentual.
+#define dLEVEL_SENSOR_PERCENT_MAX              100U    // [%]
+
+/// Valor maximo suportado pelo contador de amostras.
+#define dLEVEL_SENSOR_SAMPLE_COUNTER_MAX       255U    // [amostras]
+
+/// Valor usado para reiniciar acumuladores e contadores.
+#define dLEVEL_SENSOR_RESET_VALUE              0U
+
+// Verificacao de consistencia dos defines de configuracao.
+#if (dLEVEL_SENSOR_NUMBER == 0U)
+    #error "dLEVEL_SENSOR_NUMBER deve ser maior que zero."
+#endif
+
+#if (dLEVEL_SENSOR_NUMBER > dLEVEL_SENSOR_SAMPLE_COUNTER_MAX)
+    #error "dLEVEL_SENSOR_NUMBER excede a capacidade do contador de amostras."
+#endif
+
+#if (dLEVEL_SENSOR_ADC_MAX == 0U)
+    #error "dLEVEL_SENSOR_ADC_MAX deve ser maior que zero."
+#endif
+
+#if (dLEVEL_SENSOR_ADC_REF_MV == 0U)
+    #error "dLEVEL_SENSOR_ADC_REF_MV deve ser maior que zero."
+#endif
+
+/*******************************************************************************
+ * CONSTANTES
+ ******************************************************************************/
+// Nao ha constantes locais.
+
+/*******************************************************************************
+ * ESTRUTURAS DE DADOS LOCAIS
+ ******************************************************************************/
+
+/// Variaveis internas do LevelSensor.
 typedef struct
 {
-    uint32_t accumulator; /**< Acumulador das amostras brutas do ADC. */
-    uint8_t sampleCount; /**< Quantidade de amostras acumuladas. */
-} LevelSensor_t;
+    /// Acumulador das amostras brutas do ADC.
+    uint32_t accumulator;
 
-/* Private variables ---------------------------------------------------------*/
+    /// Quantidade de amostras acumuladas.
+    uint8_t sampleCount;
+} levelSensor_t;
 
-/**
- * @brief Instância interna do módulo LevelSensor.
- */
-static LevelSensor_t levelSensor = {0, 0};
+/// Instancia interna do LevelSensor.
+static levelSensor_t levelSensor;
 
-/* Public functions ----------------------------------------------------------*/
+/*******************************************************************************
+ * PROTOTIPOS LOCAIS
+ ******************************************************************************/
+static void LevelSensor_NewSample(uint16_t rawValue);
+static bool LevelSensor_IsReady(void);
+static uint16_t LevelSensor_GetAverage(void);
+static void LevelSensor_Reset(void);
+static uint16_t LevelSensor_RawToMilliVolts(uint16_t rawValue);
+static uint8_t LevelSensor_RawToPercent(uint16_t rawValue);
 
-/**
- * @brief Acumula uma nova amostra bruta do ADC.
- *
- * A amostra é somada ao acumulador interno enquanto a quantidade de
- * amostras ainda for menor que dLEVEL_SENSOR_NUMBER.
- *
- * @param rawValue Valor bruto lido do ADC.
- */
-void LevelSensor_NewSample(uint16_t rawValue)
+/*******************************************************************************
+ * FUNCOES PUBLICAS
+ ******************************************************************************/
+
+/******************************************************************************/
+/** @brief Executa continuamente o processamento do sensor de nivel.
+ * @param Nenhum.
+ * @retval Nenhum.
+ ******************************************************************************/
+void LevelSensor_Handler(void)
+{
+    while (true)
+    {
+        if (Bsp_TimerHasElapsed() == true)
+        {
+            Bsp_ClearTimerFlag();
+
+            uint16_t rawValue = Bsp_ReadAdcPolling();
+
+            LevelSensor_NewSample(rawValue);
+
+            if (LevelSensor_IsReady() == true)
+            {
+                uint16_t average = LevelSensor_GetAverage();
+                uint16_t millivolts = LevelSensor_RawToMilliVolts(average);
+                uint8_t percent = LevelSensor_RawToPercent(average);
+
+                Bsp_PrintLevelData(average, millivolts, percent);
+
+                LevelSensor_Reset();
+            }
+        }
+    }
+}
+
+/*******************************************************************************
+ * FUNCOES LOCAIS
+ ******************************************************************************/
+
+/******************************************************************************/
+/** @brief Acumula uma nova amostra bruta do ADC.
+ * @param rawValue: valor bruto lido do ADC.
+ * @retval Nenhum.
+ * @details A amostra e somada ao acumulador interno enquanto a quantidade de
+ *          amostras ainda for menor que dLEVEL_SENSOR_NUMBER.
+ ******************************************************************************/
+static void LevelSensor_NewSample(uint16_t rawValue)
 {
     if (levelSensor.sampleCount < dLEVEL_SENSOR_NUMBER)
     {
@@ -53,98 +143,65 @@ void LevelSensor_NewSample(uint16_t rawValue)
     }
 }
 
-/**
- * @brief Verifica se o módulo já possui amostras suficientes.
- *
- * @return 1 se a quantidade de amostras atingiu dLEVEL_SENSOR_NUMBER,
- *         0 caso contrário.
- */
-int LevelSensor_IsReady(void)
+/******************************************************************************/
+/** @brief Verifica se o modulo ja possui amostras suficientes.
+ * @param Nenhum.
+ * @retval true: a quantidade de amostras atingiu dLEVEL_SENSOR_NUMBER.
+ * @retval false: a quantidade de amostras ainda nao atingiu dLEVEL_SENSOR_NUMBER.
+ ******************************************************************************/
+static bool LevelSensor_IsReady(void)
 {
     return levelSensor.sampleCount >= dLEVEL_SENSOR_NUMBER;
 }
 
-/**
- * @brief Calcula a média aritmética das amostras acumuladas.
- *
- * Caso nenhuma amostra tenha sido acumulada, a função retorna 0 para
- * evitar divisão por zero.
- *
- * @return Média dos valores brutos do ADC.
- */
-uint16_t LevelSensor_GetAverage(void)
+/******************************************************************************/
+/** @brief Calcula a media aritmetica das amostras acumuladas.
+ * @param Nenhum.
+ * @retval Media dos valores brutos do ADC.
+ * @details Caso nenhuma amostra tenha sido acumulada, a funcao retorna
+ *          dLEVEL_SENSOR_RESET_VALUE para evitar divisao por zero.
+ ******************************************************************************/
+static uint16_t LevelSensor_GetAverage(void)
 {
-    if (levelSensor.sampleCount == 0)
+    if (levelSensor.sampleCount == dLEVEL_SENSOR_RESET_VALUE)
     {
-        return 0;
+        return dLEVEL_SENSOR_RESET_VALUE;
     }
 
     return levelSensor.accumulator / levelSensor.sampleCount;
 }
 
-/**
- * @brief Reinicia o estado interno do módulo.
- *
- * Zera o acumulador e a quantidade de amostras, permitindo iniciar
- * um novo ciclo de aquisição.
- */
-void LevelSensor_Reset(void)
+/******************************************************************************/
+/** @brief Reinicia o estado interno do modulo.
+ * @param Nenhum.
+ * @retval Nenhum.
+ ******************************************************************************/
+static void LevelSensor_Reset(void)
 {
-    levelSensor.accumulator = 0;
-    levelSensor.sampleCount = 0;
+    levelSensor.accumulator = dLEVEL_SENSOR_RESET_VALUE;
+    levelSensor.sampleCount = dLEVEL_SENSOR_RESET_VALUE;
 }
 
-/**
- * @brief Converte um valor bruto do ADC para milivolts.
- *
- * A conversão considera a resolução máxima definida por
- * dLEVEL_SENSOR_ADC_MAX e a tensão de referência definida por
- * dLEVEL_SENSOR_ADC_REF_MV.
- *
- * @param rawValue Valor bruto lido do ADC.
- *
- * @return Valor convertido em milivolts.
- */
-uint16_t LevelSensor_RawToMilliVolts(uint16_t rawValue)
+/******************************************************************************/
+/** @brief Converte um valor bruto do ADC para milivolts.
+ * @param rawValue: valor bruto lido do ADC.
+ * @retval Valor convertido em milivolts.
+ * @details A conversao considera dLEVEL_SENSOR_ADC_MAX e
+ *          dLEVEL_SENSOR_ADC_REF_MV.
+ ******************************************************************************/
+static uint16_t LevelSensor_RawToMilliVolts(uint16_t rawValue)
 {
     return rawValue * dLEVEL_SENSOR_ADC_REF_MV / dLEVEL_SENSOR_ADC_MAX;
 }
 
-/**
- * @brief Converte um valor bruto do ADC para percentual.
- *
- * O valor bruto é convertido para uma escala de 0 a 100%.
- *
- * @param rawValue Valor bruto lido do ADC.
- *
- * @return Valor percentual correspondente.
- */
-uint8_t LevelSensor_RawToPercent(uint16_t rawValue)
+/******************************************************************************/
+/** @brief Converte um valor bruto do ADC para percentual.
+ * @param rawValue: valor bruto lido do ADC.
+ * @retval Valor percentual correspondente.
+ ******************************************************************************/
+static uint8_t LevelSensor_RawToPercent(uint16_t rawValue)
 {
-    return rawValue * 100U / dLEVEL_SENSOR_ADC_MAX;
+    return rawValue * dLEVEL_SENSOR_PERCENT_MAX / dLEVEL_SENSOR_ADC_MAX;
 }
 
-void LevelSensor_Handler(void)
-{
-	while(1){
-		if (Bsp_TimerHasElapsed())
-		{
-			Bsp_ClearTimerFlag();
-
-			uint16_t rawValue = Bsp_ReadAdcPolling();
-
-			LevelSensor_NewSample(rawValue);
-
-			if (LevelSensor_IsReady())
-			{
-				uint16_t average = LevelSensor_GetAverage();
-				uint16_t millivolts = LevelSensor_RawToMilliVolts(average);
-				uint8_t percent = LevelSensor_RawToPercent(average);
-
-				Bsp_PrintLevelData(average, millivolts, percent);
-
-				LevelSensor_Reset();
-			}
-		}
-	}
-}
+/** @} DOXYGEN GROUP TAG END OF FILE */
